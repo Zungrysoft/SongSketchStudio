@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - SongSketchStudio</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<script src="request.js" defer></script>
+<script src="home.js" defer></script>
+<body>
+    <h1 class="header">Home</h1>
+    <h2 class="header">Your Sections:</h2>
+    <div id="sections_owned" class="vertical-list">
+        <a href="javascript:;" onClick=createSectionClick(event)><b>[ Create Section ]</b></a>
+    </div>
+    <h2 class="header">Invited Sections:</h2>
+    <div id="sections_invited" class="vertical-list">Nothing here...</div>
+    <h2 class="header">Your Songs:</h2>
+    <div id="songs_owned" class="vertical-list">
+        <a href="javascript:;" onClick=createSongClick(event)><b>[ Create Song ]</b></a>
+    </div>
+    <h2 class="header">Invited Songs:</h2>
+    <div id="songs_invited" class="vertical-list">Nothing here...</div>
+</html>

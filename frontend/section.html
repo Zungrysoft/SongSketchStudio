@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SongSketchStudio</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<script src="request.js" defer></script>
+<script src="audio.js" defer></script>
+<script src="section.js" defer></script>
+<body>
+    <h1 id="no_js_warning" class="header">This website requires JavaScript to be enabled</h1>
+    <img id="playbar" class="playbar" src="/images/playbar.png" draggable="false" alt=""/>
+    <img id="loopbar" class="loopbar" src="/images/loopbar.png" draggable="false" alt=""/>
+    <img id="timeline" class="timeline" src="/images/timeline.png" onclick="timelineClick(event)" draggable="false" alt=""/>
+    <div id="note_list" class="note_list"></div>
+    <img id="piano_roll" class="piano_roll" src="/images/piano_roll.png" onClick=pianoRollClick(event) draggable="false" alt=""/>
+    <div id="channels"></div>
+    <audio src="/sounds/note_test.wav"></audio>
+</body>
+</html>

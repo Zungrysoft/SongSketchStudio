@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Section - SongSketchStudio</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<script src="request.js" defer></script>
+<script src="section_edit.js" defer></script>
+<body>
+    <h1 class="header">Edit Section</h1>
+    <h4 class="header">Title</h2>
+    <input id="title" type="text" placeholder="Enter Title" required>
+    <h4 class="header">Description</h2>
+    <input id="description" type="text" placeholder="Description" required>
+    <button type="submit" onClick=submitClick(event)>Confirm Changes</button>
+    <button type="back" onClick=backClick(event)>Exit</button>
+    <h1 id="error_message" class="error"></h1>
+
+    <div id="owner_only">
+        <h1 class="header">Add Editor</h1>
+        <input id="editor" type="text" placeholder="Enter Username" required>
+        <button type="submit" onClick=editorClick(event)>Add User</button>
+        <h1 id="error_message_editor" class="error"></h1>
+        <h4 id="confirmation_message_editor" class="header"></h4>
+
+        <h1 class="header">Delete Section</h1>
+        <h4 class="header">Type DELETE here, then press confirm</h4>
+        <input id="delete_confirm" type="text" placeholder="" required>
+        <button type="submit" onClick=deleteClick(event)>Confirm Delete</button>
+        <h1 id="error_message_delete" class="error"></h1>
+    </div>
+</body>
+</html>
