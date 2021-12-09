@@ -1,4 +1,4 @@
-const HOST= "http://127.0.0.1/";
+const HOST = "http://127.0.0.1/";
 
 async function request_post(url, body, callback) {
     // Optional params

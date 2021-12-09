@@ -3,10 +3,10 @@
 // =====
 
 // Globals
-var playbarPosition = 0;
-var playbarStart = 0;
+var startbarPosition = 0;
 var nextId = 0;
 var editingEnabled = true;
+var currentIndex = -1;
 
 // Section list
 const MAX_SECTIONS = 24;
@@ -24,6 +24,9 @@ var index = 0;
 // Constants
 const sectionWidth = 160;
 const sectionHeight = 120;
+const timelineHeight = 60;
+const VERTICAL_BUTTON_SPACING = 40;
+const VERTICAL_BUTTON_DISTANCE = 200;
 
 // Query Params
 const urlParams = new URLSearchParams(window.location.search);
@@ -38,14 +41,48 @@ if (!songId) {
 // Helpers
 // =======
 
-function movePlaybar(xPos) {
+function moveStartbar(xPos) {
     // Edit HTML
+    startbarPosition = xPos;
     let xCSS = (xPos*sectionWidth) + "px";
     var cssVal = "position: absolute; pointer-events: none; top: 0px; left: " + xCSS;
-    document.getElementById("playbar").setAttribute('style', cssVal);
+    document.getElementById("startbar").setAttribute('style', cssVal);
 }
 
-/*function reloadSections() {
+// Converts the way sections are stored for the frontend to data playback.js can read
+function convertSectionData() {
+    const ret = [];
+
+    // Go through sectionPlacements
+    for (let i = 0; i < sectionPlacements.length; i ++) {
+        // Default data
+        var noteList = [];
+        var loopPoint = -1;
+
+        // Check if slot has a section in it
+        var id = sectionPlacements[i];
+        if (id) {
+            noteList = sectionsAvailable[id]["noteList"];
+            loopPoint = sectionsAvailable[id]["loopPoint"];
+        }
+        
+        // Build dict
+        const dict = {
+            notes: noteList,
+            loopPoint: loopPoint,
+        }
+
+        ret.push(dict);
+    }
+
+    return ret;
+}
+
+function reloadSections() {
+    // Update note/section data in playback
+    updateSectionList(convertSectionData());
+
+    // Build elements
     const container = document.getElementById("section_list");
 
     // Delete all existing section elements
@@ -53,113 +90,100 @@ function movePlaybar(xPos) {
         container.removeChild(container.lastChild);
     }
 
-    // Build new section elements
-    sectionPlacements.forEach((item, index) => {
-        // Build style
-        let xCSS = (item.time*noteWidth) + "px"
-        let yCSS = ((item.pitch*noteHeight) + (noteHeight * 2)) + "px"
-        let cssVal = "position: absolute; left: " + xCSS + "; top: " + yCSS;
+    // Build the buttons (only if editing is enabled)
+    if (editingEnabled) {
+        for (let i = 0; i < MAX_SECTIONS; i ++) {
+            let j = 0;
+            for (const key in sectionsAvailable) {
+                // Get object
+                const item = sectionsAvailable[key];
 
-        // Build function call
-        let functionCall = "noteClick(" + item.id + ", event)";
+                // Build style
+                const xCSS = (sectionWidth * i) + "px";
+                const yCSS = ((VERTICAL_BUTTON_SPACING*j) + VERTICAL_BUTTON_DISTANCE) + "px";
+                const colorCSS = sectionPlacements[i] == item["_id"] ? "yellow" : "white";
 
-        // Create element
-        let ne = document.createElement("img");
-        ne.setAttribute('src', "/images/note_green_light.png");
-        ne.setAttribute('style', cssVal);
-        ne.setAttribute('onClick', functionCall);
-        ne.setAttribute('draggable', 'false');
-        ne.setAttribute('alt', '');
-        container.appendChild(ne);
-    });
-}*/
-/*
-function createNote(x, y) {
-    // Build the note object
-    const toAdd = {id: nextId, pitch: y, time: x};
-    nextId ++;
+                const cssVal = "position: absolute" + 
+                    ";left: " + xCSS + 
+                    "; top: " + yCSS + 
+                    "; width: " + sectionWidth +
+                    "; background-color: " + colorCSS;
 
-    // Append it to the list
-    noteList.push(toAdd);
+                // Build function call
+                const functionCall = "sectionClick(\"" + item["_id"] + "\", " + i + ", event)";
 
-    // Re-render the note objects based on the updated list
-    reloadNotes();
+                // Create element
+                let ne = document.createElement("button");
+                ne.setAttribute('type', 'submit');
+                ne.setAttribute('style', cssVal);
+                ne.setAttribute('onClick', functionCall);
+                ne.innerText = item["title"];
+                container.appendChild(ne);
 
-    // Play the note
-    playNote(y);
-
-    // Build request body
-    const body = {
-        time: x,
-        pitch: y
-    };
-    
-    // Notify the server
-    request_post('api/section/addNote/' + sectionId, body);
-}
-
-function deleteNote(id) {
-    // Filter note out
-    for (let i = 0; i < noteList.length; i ++) {
-        var note = noteList[i];
-        if (note["id"] == id) {
-            // Remove from list
-            noteList.splice(i, 1);
-
-            // Build request body
-            const body = {
-                time: note.time,
-                pitch: note.pitch
-            };
-            
-            // Notify the server
-            request_post('api/section/removeNote/' + sectionId, body);
-            
-            i ++;
+                j ++;
+            }
         }
     }
-    reloadNotes();
+    rebuildTiles();
 }
-*/
+
+function rebuildTiles() {
+    // Build elements
+    const tile_container = document.getElementById("tile_list");
+
+    // Delete all existing section elements
+    while (tile_container.lastChild) {
+        tile_container.removeChild(tile_container.lastChild);
+    }
+
+    // Build the tiles
+    for (let i = 0; i < MAX_SECTIONS; i ++) {
+        console.log(sectionPlacements[i])
+        if (sectionPlacements[i].length > 0) {
+            // Build style
+            const xCSS = (sectionWidth * i) + "px";
+            const yCSS = timelineHeight + "px";
+
+            const cssVal = "position: absolute; left: " + xCSS + "; top: " + yCSS;
+
+            // Build function call
+            const functionCall = "sectionLinkClick(\"" + sectionPlacements[i] + "\", event)";
+
+            // Determine image
+            const image = (i == currentIndex) ? "/images/arranger_item_selected.png" : "/images/arranger_item.png";
+
+            // Create element
+            let ne = document.createElement("img");
+            ne.setAttribute('src', image);
+            ne.setAttribute('style', cssVal);
+            ne.setAttribute('onClick', functionCall);
+            ne.setAttribute('draggable', 'false');
+            ne.setAttribute('id', 'tile_' + i);
+            ne.setAttribute('alt', '');
+            tile_container.appendChild(ne);
+        }
+    }
+}
+
+// Playback will call this function upon changing sections
+// So the frontend can animate its movement through sections
+function trackIndex(index) {
+    currentIndex = index;
+    rebuildTiles();
+}
+
 function updateTabTitle(str) {
     document.getElementById("tab_title").innerText = str + " - SongSketchStudio";
 }
 
-function songNoteGrabber(index) {
-    const data = sectionPlacements[index];
 
-    // Build default return data (for empty slot)
-    var noteList = [];
-    var loopPoint = -1;
-    var final = false;
-
-    // Check if slot is filled
-    var id = data["_id"];
-    if (id) {
-        noteList = sectionsAvailable[id]["noteList"];
-        loopPoint = sectionsAvailable[id]["loopPoint"];
-    }
-    // Check if this is the last section
-    if (index >= MAX_SECTIONS-1) {
-        final = true;
-    }
-    
-    // Build dict
-    const dict = {
-        noteList: noteList,
-        loopPoint: loopPoint,
-        final: final,
-    }
-    
-    return dict;
-}
 
 function getPageData() {
     // Reset data
     sectionsAvailable = {};
     sectionPlacements = [];
     for (let i = 0; i < MAX_SECTIONS; i ++) {
-        sectionPlacements.push({});
+        sectionPlacements.push("");
     }
 
     // First, get song data
@@ -177,15 +201,14 @@ function getPageData() {
             var id = item["_id"];
             var time = item["time"];
 
-            // Confirm time is okay
+            // Confirm time is okay so no index OOB
             if (time >= MAX_SECTIONS || time < 0) {
-                return;
+                time = 0;
             }
 
             // Package id and title as a dict
             sectionPlacements[time] = id;
         });
-        console.log(sectionsAvailable);
 
         // Convert backend sectionsAvailable format to frontend format
         readList = json["song"]["sectionsAvailable"];
@@ -196,7 +219,7 @@ function getPageData() {
             // Package id and title as a dict
             sectionsAvailable[id] = item;
         });
-        console.log(sectionsAvailable);
+        reloadSections();
 
         // Enable playback
         enablePlayback();
@@ -207,11 +230,8 @@ function getPageData() {
         // Set bpm
         setBpm(json["song"]["bpm"] || 120);
 
-        // Set playbar animation as the animation callback in playback.js
-        setPlaybackAnimation(() => {});
-
-        // Set grab notes callback
-        setNoteGrabber(songNoteGrabber);
+        // Set index tracker as the animation callback in playback.js
+        setPlaybackTracker(trackIndex);
 
         // Update editing mode
         editingEnabled = json["isEditor"];
@@ -230,8 +250,8 @@ function timelineClick(e) {
     // Use this to determine which cell they clicked
     var xCell = Math.trunc(x/sectionWidth);
 
-    // Move the playbar
-    movePlaybar(xCell);
+    // Move the startbar
+    moveStartbar(xCell);
 }
 
 // Piano Roll
@@ -240,7 +260,7 @@ function pianoRollClick(e) {
     if (editingEnabled) {
         // Determine the coords the image was clicked at
         var x = e.clientX + window.pageXOffset;
-        var y = e.clientY + window.pageYOffset - (noteHeight * 2);
+        var y = e.clientY + window.pageYOffset - timelineHeight;
 
         // Use this to determine which cell they clicked
         var xCell = Math.trunc(x/noteWidth);
@@ -251,25 +271,32 @@ function pianoRollClick(e) {
     }
 }
 
-// Note
-function noteClick(id, e) {
-    // Make sure editing is enabled
-    if (editingEnabled) {
-        deleteNote(id);
+// Section Button
+function sectionClick(id, pos, e) {
+    if (sectionPlacements[pos] == id) {
+        sectionPlacements[pos] = "";
+    } else {
+        sectionPlacements[pos] = id;
     }
+    reloadSections();
+}
+
+// Section Link
+function sectionLinkClick(id, e) {
+    window.open(HOST + "section.html?id=" + id, "_blank");
 }
 
 // ==============
 // Special Events
 // ==============
 
-window.onkeydown = function(e){
+window.onkeydown = function(e) {
     if(e.keyCode === 32) {
         // Prevent Spacebar Scrolling
         e.preventDefault();
 
         // Toggle playback
-        togglePlayback();
+        togglePlayback(startbarPosition);
     }
 };
 
@@ -280,8 +307,8 @@ window.onkeydown = function(e){
 // Load in notes from server
 getPageData();
 
-// Gives the playbar its starting CSS at position 0
-movePlaybar(0);
+// Gives the startbar its starting CSS at position 0
+moveStartbar(0);
 
 // Removes the JavaScript Warning since JavaScript is working
 document.getElementById("no_js_warning").remove();

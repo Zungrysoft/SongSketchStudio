@@ -1,56 +1,55 @@
 // Playback Variables
 var playbackStatus = -1; // -1 = Not ready, 0 = Stopped, 1 = Playing
-var bpm = 120;
+var playbackBpm = 120;
 var nextNote = 0;
 var previousNote = 0;
 var startTime = 0;
-var playbackNoteList = [];
-var playbackLoopPoint = -1;
+var loopingEnabled = 0;
+var playbackSectionList = [];
 var playbackIndex = 0; // Tracks how many loops we've made
-var playbackFinal = false;
 var animatePlayback = () => {};
-var grabNotes = () => {};
+var trackPlayback = () => {};
 
 // Sets the function to call that indicates the current position of the playbar
 function setPlaybackAnimation(pa) {
     animatePlayback = pa;
 }
 
-// Sets the function to call when more notes need to be grabbed
-function setNoteGrabber(ng) {
-    grabNotes = ng;
+// Sets the function to call that indicates the current position of the playbar
+function setPlaybackTracker(pt) {
+    trackPlayback = pt;
 }
 
-// Sets the loop point for playback
-function setLoopPoint(lp) {
-    playbackLoopPoint = lp;
-    recalculateNextNote();
-}
-
-// Updates the note list playback will play from
-function updateNoteList(nl) {
-    playbackNoteList = nl;
+// Updates the section list playback will play from
+function updateSectionList(nl) {
+    // If the playback shrinks (which shouldn't happen) to less than the current index,
+    // stop playback
+    if (playbackIndex >= nl.length) {
+        playbackStop();
+    }
+    playbackSectionList = nl;
     recalculateNextNote();
 }
 
 // Sets the loop point for playback
 function setBpm(bpm) {
-    playbackLoopPoint = bpm;
+    playbackBpm = bpm;
     recalculateNextNote();
 }
 
+// Sets loop mode for playback
+function setLoopMode(lm) {
+    loopingEnabled = lm;
+}
+
 // Start playback
-function playbackStart() {
+function playbackStart(index) {
     startTime = Date.now();
     nextNote = 0;
     previousNote = -1;
     playbackStatus = 1;
-
-    // Grab next collection of notes
-    grabData = grabNotes(playbackIndex);
-    playbackNoteList = grabData["noteList"];
-    loopbarPosition = grabData["loopbarPosition"];
-    playbackFinal = grabData["final"];
+    playbackIndex = index || 0;
+    trackPlayback(index || 0);
 
     console.log("PLAY");
 }
@@ -58,15 +57,16 @@ function playbackStart() {
 // Stop playback
 function playbackStop() {
     playbackStatus = 0;
-    movePlaybar(0);
+    animatePlayback(0);
+    trackPlayback(-1);
     console.log("STOP");
 }
 
 // Toggle between play and stop
-function togglePlayback() {
+function togglePlayback(index) {
     // Play
     if (playbackStatus === 0) {
-        playbackStart();
+        playbackStart(index);
         return 1;
     }
 
@@ -87,12 +87,12 @@ function enablePlayback() {
 
 // Convert from Piano-Roll time to milliseconds
 function timeToMs(time) {
-    return time / (bpm / 60000);
+    return time / (playbackBpm / 60000);
 }
 
 // Convert from milliseconds to Piano-Roll time
 function msToTime(time) {
-    return time * (bpm / 60000);
+    return time * (playbackBpm / 60000);
 }
 
 // If note data changes during playback, this will make sure that note doesn't get skipped
@@ -107,13 +107,9 @@ function recalculateNextNote() {
 // Finds the next time where a note is
 function findNextNote(now) {
     var earliest = 1000000000000000;
-    
-    if (playbackNoteList.length === 0) {
-        console.log("EMPTY!");
-    }
 
     // Figure out when the next note is
-    playbackNoteList.forEach(( item, index ) => {
+    playbackSectionList[playbackIndex]["notes"].forEach(( item, index ) => {
         const t = timeToMs(item.time);
         if (t > now && t < earliest) {
             earliest = t;
@@ -121,9 +117,10 @@ function findNextNote(now) {
     });
 
     // See if the "next note" is actually the loop point
-    const lp = timeToMs(playbackLoopPoint);
-    if (lp < earliest && playbackLoopPoint > 0) {
-        earliest = lp;
+    const loopPoint = playbackSectionList[playbackIndex]["loopPoint"];
+    const lpms = timeToMs(loopPoint);
+    if (lpms < earliest) {
+        earliest = lpms;
     }
 
     console.log(earliest)
@@ -140,23 +137,28 @@ function timer() {
         // If we've passed a note that should be played
         if (relativeTime >= nextNote) {
             // If we've passed the loop point, go back to the beginning
-            const lp = timeToMs(playbackLoopPoint);
-            if (lp <= nextNote && playbackLoopPoint > 0) {
-                playbackIndex += 1;
-                // If this is designated as the final set of notes, stop
-                if (playbackFinal) {
-                    playbackStop();
+            const loopPoint = playbackSectionList[playbackIndex]["loopPoint"];
+            const lpms = timeToMs(loopPoint);
+            if (lpms <= nextNote) {
+                // If we have run out of sections to play, stop playback or loop
+                if (playbackIndex >= playbackSectionList.length-1) {
+                    if (loopingEnabled) {
+                        playbackStart(0);
+                    }
+                    else {
+                        playbackStop();
+                    }
                 }
                 // Otherwise, go to the next set of notes
                 else {
-                    playbackStart();
+                    playbackStart(playbackIndex + 1);
                 }
                 
                 return;
             }
 
             // Play notes
-            playbackNoteList.forEach(( item, index ) => {
+            playbackSectionList[playbackIndex]["notes"].forEach(( item, index ) => {
                 const t = timeToMs(item.time);
                 if (previousNote < t && t <= nextNote) {
                     console.log("PLAYED NOTE: ", item.pitch);

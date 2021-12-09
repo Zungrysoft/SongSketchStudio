@@ -35,7 +35,7 @@ function movePlaybar(xPos) {
 
 function moveLoopbar(xPos) {
     loopbarPosition = xPos + 1;
-    setLoopPoint(loopbarPosition);
+    reloadNotes();
 
     // Edit HTML
     let xCSS = (xPos*noteWidth) + "px";
@@ -52,7 +52,12 @@ function moveLoopbar(xPos) {
 }
 
 function reloadNotes() {
-    updateNoteList(noteList);
+    updateSectionList([
+        {
+            notes: noteList,
+            loopPoint: loopbarPosition,
+        }
+    ]);
     const container = document.getElementById("note_list");
 
     // Delete all existing note elements
@@ -63,8 +68,8 @@ function reloadNotes() {
     // Build new note elements
     noteList.forEach((item, index) => {
         // Build style
-        let xCSS = (item.time*noteWidth) + "px"
-        let yCSS = ((item.pitch*noteHeight) + (noteHeight * 2)) + "px"
+        let xCSS = (item.time*noteWidth) + "px";
+        let yCSS = ((item.pitch*noteHeight) + (noteHeight * 2)) + "px";
         let cssVal = "position: absolute; left: " + xCSS + "; top: " + yCSS;
 
         // Build function call
@@ -128,16 +133,6 @@ function deleteNote(id) {
     reloadNotes();
 }
 
-function sectionNoteGrabber(index) {
-    const dict = {
-        noteList: noteList,
-        loopPoint: loopbarPosition,
-        final: false,
-    }
-    
-    return dict;
-}
-
 function updateTabTitle(str) {
     document.getElementById("tab_title").innerText = str + " - SongSketchStudio";
 }
@@ -167,17 +162,17 @@ function getPageData() {
         // Move loop point
         moveLoopbar(json["section"]["loopPoint"]);
 
-        // Set bpm
-        setBpm(json["section"]["bpm"] || 120);
-
         // Update tab title
         updateTabTitle(json["section"]["title"]);
 
+        // Set bpm
+        setBpm(json["section"]["bpm"] || 120);
+
+        // Enabled looping
+        setLoopMode(true);
+
         // Set playbar animation as the animation callback in playback.js
         setPlaybackAnimation(movePlaybar);
-
-        // Set grab notes callback
-        setNoteGrabber(sectionNoteGrabber);
 
         // Update editing mode
         editingEnabled = json["isEditor"];
