@@ -5,9 +5,15 @@ const sectionSchema = new mongoose.Schema({
   description: String,
   creationDateTime: Date,
   lastEditDateTime: Date,
-  noteList: [{ pitch : Number, time: Number, duration: Number }],
+  noteList: [{
+    _id: false,
+    pitch : Number,
+    time: Number,
+    duration: Number
+  }],
   loopPoint: Number,
   instrument: Number,
+  bpm: Number,
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -16,7 +22,6 @@ const sectionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   }],
-  lastUserChangeDateTime: Date,
 });
 
 /* 

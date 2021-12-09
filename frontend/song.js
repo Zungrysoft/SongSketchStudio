@@ -3,21 +3,34 @@
 // =====
 
 // Globals
-var loopbarPosition = 0;
+var playbarPosition = 0;
+var playbarStart = 0;
 var nextId = 0;
-var noteList = [];
-var editingEnabled = false;
+var editingEnabled = true;
+
+// Section list
+const MAX_SECTIONS = 24;
+var sectionPlacements = [];
+var sectionsAvailable = {};
+
+// Playback Variables
+var playbackStatus = -1; // -1 = Not ready, 0 = Stopped, 1 = Playing
+var bpm = 120;
+var nextNote = 0;
+var previousNote = 0;
+var startTime = 0;
+var index = 0;
 
 // Constants
-const noteWidth = 40;
-const noteHeight = 30;
+const sectionWidth = 160;
+const sectionHeight = 120;
 
 // Query Params
 const urlParams = new URLSearchParams(window.location.search);
-const sectionId = urlParams.get('id');
+const songId = urlParams.get('id');
 
 // Redirect user if id query param is invalid
-if (!sectionId) {
+if (!songId) {
     window.location.href = "error_404.html";
 }
 
@@ -25,43 +38,23 @@ if (!sectionId) {
 // Helpers
 // =======
 
-// Animates the playbar
 function movePlaybar(xPos) {
     // Edit HTML
-    let xCSS = (xPos*noteWidth) + "px";
+    let xCSS = (xPos*sectionWidth) + "px";
     var cssVal = "position: absolute; pointer-events: none; top: 0px; left: " + xCSS;
     document.getElementById("playbar").setAttribute('style', cssVal);
 }
 
-function moveLoopbar(xPos) {
-    loopbarPosition = xPos + 1;
-    setLoopPoint(loopbarPosition);
+/*function reloadSections() {
+    const container = document.getElementById("section_list");
 
-    // Edit HTML
-    let xCSS = (xPos*noteWidth) + "px";
-    var cssVal = "position: absolute; pointer-events: none; top: 0px; left: " + xCSS;
-    document.getElementById("loopbar").setAttribute('style', cssVal);
-
-    // Build request body
-    const body = {
-        loopPoint: xPos,
-    };
-
-    // Make the request
-    request_post('api/section/edit/' + sectionId, body);
-}
-
-function reloadNotes() {
-    updateNoteList(noteList);
-    const container = document.getElementById("note_list");
-
-    // Delete all existing note elements
+    // Delete all existing section elements
     while (container.lastChild) {
         container.removeChild(container.lastChild);
     }
 
-    // Build new note elements
-    noteList.forEach((item, index) => {
+    // Build new section elements
+    sectionPlacements.forEach((item, index) => {
         // Build style
         let xCSS = (item.time*noteWidth) + "px"
         let yCSS = ((item.pitch*noteHeight) + (noteHeight * 2)) + "px"
@@ -79,8 +72,8 @@ function reloadNotes() {
         ne.setAttribute('alt', '');
         container.appendChild(ne);
     });
-}
-
+}*/
+/*
 function createNote(x, y) {
     // Build the note object
     const toAdd = {id: nextId, pitch: y, time: x};
@@ -127,57 +120,98 @@ function deleteNote(id) {
     }
     reloadNotes();
 }
+*/
+function updateTabTitle(str) {
+    document.getElementById("tab_title").innerText = str + " - SongSketchStudio";
+}
 
-function sectionNoteGrabber(index) {
+function songNoteGrabber(index) {
+    const data = sectionPlacements[index];
+
+    // Build default return data (for empty slot)
+    var noteList = [];
+    var loopPoint = -1;
+    var final = false;
+
+    // Check if slot is filled
+    var id = data["_id"];
+    if (id) {
+        noteList = sectionsAvailable[id]["noteList"];
+        loopPoint = sectionsAvailable[id]["loopPoint"];
+    }
+    // Check if this is the last section
+    if (index >= MAX_SECTIONS-1) {
+        final = true;
+    }
+    
+    // Build dict
     const dict = {
         noteList: noteList,
-        loopPoint: loopbarPosition,
-        final: false,
+        loopPoint: loopPoint,
+        final: final,
     }
     
     return dict;
 }
 
-function updateTabTitle(str) {
-    document.getElementById("tab_title").innerText = str + " - SongSketchStudio";
-}
-
 function getPageData() {
-    // TODO make this link dynamic
-    request_get('api/section/get/' + sectionId, json => {
+    // Reset data
+    sectionsAvailable = {};
+    sectionPlacements = [];
+    for (let i = 0; i < MAX_SECTIONS; i ++) {
+        sectionPlacements.push({});
+    }
+
+    // First, get song data
+    request_get('api/song/get/' + songId, json => {
         // Make sure the user wasn't denied access
         if (json["error"]) {
             console.log("CANT LOAD");
             //window.location.href = "error_access.html";
         }
 
-        var readList = json["section"]["noteList"];
-        
-        // Give each note an id for the frontend
-        for (let i = 0; i < readList.length; i ++) {
-            readList[i]["id"] = nextId;
-            nextId ++;
-        }
-        noteList = readList;
-        reloadNotes();
+        // Convert backend sectionPlacements format to frontend format
+        var readList = json["song"]["sectionPlacements"];
+        readList.forEach((item, index) => {
+            // Pull json data out
+            var id = item["_id"];
+            var time = item["time"];
+
+            // Confirm time is okay
+            if (time >= MAX_SECTIONS || time < 0) {
+                return;
+            }
+
+            // Package id and title as a dict
+            sectionPlacements[time] = id;
+        });
+        console.log(sectionsAvailable);
+
+        // Convert backend sectionsAvailable format to frontend format
+        readList = json["song"]["sectionsAvailable"];
+        readList.forEach((item, index) => {
+            // Pull json data out
+            var id = item["_id"];
+
+            // Package id and title as a dict
+            sectionsAvailable[id] = item;
+        });
+        console.log(sectionsAvailable);
 
         // Enable playback
         enablePlayback();
 
-        // Move loop point
-        moveLoopbar(json["section"]["loopPoint"]);
+        // Update tab title
+        updateTabTitle(json["song"]["title"]);
 
         // Set bpm
-        setBpm(json["section"]["bpm"] || 120);
-
-        // Update tab title
-        updateTabTitle(json["section"]["title"]);
+        setBpm(json["song"]["bpm"] || 120);
 
         // Set playbar animation as the animation callback in playback.js
-        setPlaybackAnimation(movePlaybar);
+        setPlaybackAnimation(() => {});
 
         // Set grab notes callback
-        setNoteGrabber(sectionNoteGrabber);
+        setNoteGrabber(songNoteGrabber);
 
         // Update editing mode
         editingEnabled = json["isEditor"];
@@ -190,17 +224,14 @@ function getPageData() {
 
 // Timeline at the top of the screen
 function timelineClick(e) {
-    // Make sure editing is enabled
-    if (editingEnabled) {
-        // Determine the coords the image was clicked at
-        var x = e.clientX + window.pageXOffset;
+    // Determine the coords the image was clicked at
+    var x = e.clientX + window.pageXOffset;
 
-        // Use this to determine which cell they clicked
-        var xCell = Math.trunc(x/noteWidth);
+    // Use this to determine which cell they clicked
+    var xCell = Math.trunc(x/sectionWidth);
 
-        // Move the loopbar
-        moveLoopbar(xCell);
-    }
+    // Move the playbar
+    movePlaybar(xCell);
 }
 
 // Piano Roll
@@ -249,8 +280,7 @@ window.onkeydown = function(e){
 // Load in notes from server
 getPageData();
 
-// Gives the playbars their starting CSS at position 0
-moveLoopbar(0);
+// Gives the playbar its starting CSS at position 0
 movePlaybar(0);
 
 // Removes the JavaScript Warning since JavaScript is working

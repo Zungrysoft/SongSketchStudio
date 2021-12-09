@@ -11,14 +11,13 @@
 <script src="request.js" defer></script>
 <script src="audio.js" defer></script>
 <script src="playback.js" defer></script>
-<script src="section.js" defer></script>
+<script src="song.js" defer></script>
 <body>
     <h1 id="no_js_warning" class="header">This website requires JavaScript to be enabled</h1>
     <img id="playbar" class="playbar" src="/images/playbar.png" draggable="false" alt=""/>
-    <img id="loopbar" class="loopbar" src="/images/loopbar.png" draggable="false" alt=""/>
-    <img id="timeline" class="timeline" src="/images/timeline.png" onclick="timelineClick(event)" draggable="false" alt=""/>
-    <div id="note_list" class="note_list"></div>
-    <img id="piano_roll" class="piano_roll" src="/images/piano_roll.png" onClick=pianoRollClick(event) draggable="false" alt=""/>
+    <img id="timeline" class="timeline" src="/images/timeline3.png" onclick="timelineClick(event)" draggable="false" alt=""/>
+    <div id="section_list" class="section_list"></div>
+    <img id="piano_roll" class="piano_roll" src="/images/arranger.png" onClick=pianoRollClick(event) draggable="false" alt=""/>
     <div id="channels"></div>
     <audio src="/sounds/note_test.wav"></audio>
 </body>

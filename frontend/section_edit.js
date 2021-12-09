@@ -3,6 +3,7 @@ const FAILURE = "Something went wrong";
 const DELETE_CONFIRMATION = "You must type DELETE in the text box";
 const NO_TITLE = "You must provide a title";
 const NO_USERNAME = "You must provide a username";
+const NOT_NUMBER = "Bpm must be a positive number";
 
 // Query Params
 const urlParams = new URLSearchParams(window.location.search);
@@ -49,8 +50,51 @@ function getPageData() {
         // Edit the HTML data
         var title = json["section"]["title"];
         var description = json["section"]["description"];
+        var bpm = json["section"]["bpm"];
+        console.log(bpm);
         document.getElementById("title").value = title;
         document.getElementById("description").value = description;
+        document.getElementById("bpm").value = bpm;
+    });
+}
+
+function submitClick(e) {
+    // Retrieve data from the username and password boxes
+    var title = document.getElementById("title").value;
+    var description = document.getElementById("description").value;
+    var bpm = document.getElementById("bpm").value;
+
+    // Make sure the title is not empty
+    if (title.length === 0) {
+        document.getElementById("error_message").innerText = NO_TITLE;
+        return;
+    }
+
+    // Make sure the bpm is a positive number
+        bpm = parseInt(bpm);
+    if (bpm == null || !(bpm > 0)) {
+        document.getElementById("error_message").innerText = NOT_NUMBER;
+        return;
+    }
+
+    // Build request body
+    var body = {
+        title: title,
+        description: description,
+        bpm: bpm,
+    };
+
+    // Make the request
+    request_post('api/section/edit/' + sectionId, body, (json, res) => {
+        // Make sure the request was successful
+        if (res["status"] === 200) {
+            // Redirect the user back to the section's page
+            window.location.href = "section.html?id=" + sectionId;
+            return;
+        }
+        else {
+            document.getElementById("error_message").innerText = FAILURE;
+        }
     });
 }
 
@@ -80,6 +124,7 @@ function editorClick(e) {
             // Redirect the user to the login page
             document.getElementById("confirmation_message_editor").innerText = username + " is now an editor";
             document.getElementById("error_message_editor").innerText = "";
+            document.getElementById("editor").value = "";
             return;
         }
         else {
@@ -89,37 +134,6 @@ function editorClick(e) {
             else {
                 document.getElementById("error_message_editor").innerText = FAILURE;
             }
-        }
-    });
-}
-
-function submitClick(e) {
-    // Retrieve data from the username and password boxes
-    var title = document.getElementById("title").value;
-    var description = document.getElementById("description").value;
-
-    // Make sure the title is not empty
-    if (title.length === 0) {
-        document.getElementById("error_message").innerText = NO_TITLE;
-        return;
-    }
-
-    // Build request body
-    var body = {
-        title: title,
-        description: description,
-    };
-
-    // Make the request
-    request_post('api/section/edit/' + sectionId, body, (json, res) => {
-        // Make sure the request was successful
-        if (res["status"] === 200) {
-            // Redirect the user back to the section's page
-            window.location.href = "section.html?id=" + sectionId;
-            return;
-        }
-        else {
-            document.getElementById("error_message").innerText = FAILURE;
         }
     });
 }

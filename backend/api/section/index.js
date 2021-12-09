@@ -11,51 +11,6 @@ const section = express.Router();
 // Helper Functions
 // ================
 
-// Checks if the user making this request is the owner of the section
-function isOwner(req, object) {
-  if (!req.user) {
-    return false;
-  }
-  if (object.owner.toString() !== req.user.id) {
-    return false;
-  }
-  return true;
-}
-function checkIsOwner(req, res, object) {
-  if (isOwner(req, object)) {
-    return false;
-  }
-  return res.status(403).json({
-    error: 'This account is not authorized for this object',
-  });
-}
-
-// Checks if the user making this request is allowed to edit this section
-function isEditor(req, object) {
-  if (isOwner(req, object)) {
-    return true;
-  }
-  if (!req.user) {
-    return false;
-  }
-  var editors = object.editors;
-  for (let i = 0; i < editors.length; i ++) {
-    var item = editors[i];
-    if (item.toString() === req.user.id.toString()) {
-      return true;
-    }
-  }
-  return false;
-}
-function checkIsEditor(req, res, object) {
-  if (isEditor(req, object)) {
-    return false;
-  }
-  return res.status(403).json({
-    error: 'This account is not authorized for this object',
-  });
-}
-
 // Handles returning a section JSON object
 async function sectionReturn(req, res, obj) {
   // Get the user data of this user
@@ -64,10 +19,10 @@ async function sectionReturn(req, res, obj) {
   // Tell the frontend if this user is authorized to edit this object
   var userIsOwner = false;
   var userIsEditor = false;
-  if (isOwner(req, obj)) {
+  if (helpers.isOwner(req, obj)) {
     userIsOwner = true;
   }
-  if (isEditor(req, obj)) {
+  if (helpers.isEditor(req, obj)) {
     userIsEditor = true;
   }
 
@@ -105,6 +60,7 @@ section.post('/create', middleware.authenticateUser, async (req, res) => {
     notes: '',
     owner: req.user.id,
     loopPoint: 15,
+    bpm: 120,
   });
 
   // Save it to the database
@@ -143,7 +99,7 @@ section.post('/edit/:id([a-f0-9]+)', middleware.authenticateUser, async (req, re
   }
 
   // Ensure the authenticated user is an editor of this section
-  result = checkIsEditor(req, res, getObj);
+  result = helpers.checkIsEditor(req, res, getObj);
   if (result) {return result;}
 
   // Change the section data
@@ -151,6 +107,7 @@ section.post('/edit/:id([a-f0-9]+)', middleware.authenticateUser, async (req, re
   getObj.description = req.body.description || getObj.description;
   getObj.instrument = req.body.instrument || getObj.instrument;
   getObj.loopPoint = req.body.loopPoint || getObj.loopPoint;
+  getObj.bpm = req.body.bpm || getObj.bpm;
   getObj.lastEditDateTime = Date.now();
 
   // Save it to the database
@@ -190,7 +147,7 @@ section.post('/addEditor/:id([a-f0-9]+)', middleware.authenticateUser, async (re
   }
 
   // Ensure the authenticated user is the owner of this section
-  result = checkIsOwner(req, res, getObj);
+  result = helpers.checkIsOwner(req, res, getObj);
   if (result) {return result;}
 
   // Find the user with the username
@@ -264,7 +221,7 @@ section.post('/addNote/:id([a-f0-9]+)', middleware.authenticateUser, async (req,
   }
 
   // Ensure the authenticated user is an editor of this section
-  result = checkIsEditor(req, res, getObj);
+  result = helpers.checkIsEditor(req, res, getObj);
   if (result) {return result;}
 
   // Ensure note info was specified
@@ -315,7 +272,7 @@ section.post('/removeNote/:id([a-f0-9]+)', middleware.authenticateUser, async (r
   }
 
   // Ensure the authenticated user is an editor of this section
-  result = checkIsEditor(req, res, getObj);
+  result = helpers.checkIsEditor(req, res, getObj);
   if (result) {return result;}
 
   // Ensure note info was specified
@@ -365,7 +322,7 @@ section.post('/delete/:id([a-f0-9]+)', middleware.authenticateUser, async (req, 
   }
 
   // Ensure the authenticated user is owner of this section
-  result = checkIsOwner(req, res, getObj);
+  result = helpers.checkIsOwner(req, res, getObj);
   if (result) {return result;}
 
   // Delete it

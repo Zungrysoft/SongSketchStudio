@@ -12,10 +12,12 @@
 <script src="section_edit.js" defer></script>
 <body>
     <h1 class="header">Edit Section</h1>
-    <h4 class="header">Title</h2>
+    <h4 class="header">Title</h4>
     <input id="title" type="text" placeholder="Enter Title" required>
-    <h4 class="header">Description</h2>
+    <h4 class="header">Description</h4>
     <input id="description" type="text" placeholder="Description" required>
+    <h4 class="header">BPM</h4>
+    <input id="bpm" type="number" placeholder="BPM" required>
     <button type="submit" onClick=submitClick(event)>Confirm Changes</button>
     <button type="back" onClick=backClick(event)>Exit</button>
     <h1 id="error_message" class="error"></h1>

@@ -61,7 +61,7 @@ function createSectionClick(e) {
     request_post('api/section/create', {}, (json, res) => {
         if (res.status == 200) {
             var id = json["section"]["_id"];
-            window.location.href = "section.html?id=" + id;
+            window.location.href = "section_edit.html?id=" + id;
         }
     });
 }
