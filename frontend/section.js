@@ -154,7 +154,6 @@ function getPageData() {
             nextId ++;
         }
         noteList = readList;
-        reloadNotes();
 
         // Enable playback
         enablePlayback();
@@ -176,6 +175,9 @@ function getPageData() {
 
         // Update editing mode
         editingEnabled = json["isEditor"];
+
+        // Reload
+        reloadNotes();
     });
 }
 

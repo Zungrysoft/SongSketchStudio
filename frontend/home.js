@@ -1,9 +1,9 @@
 // Helper function for adding a section link
-function addItem(category, title, id) {
+function addItem(category, title, id, type) {
     // Create the element
-    let ne = document.createElement("a");
+    var ne = document.createElement("a");
     ne.innerText = title;
-    ne.href = HOST + "section.html?id=" + id; // HOST global is defined in request.js
+    ne.href = HOST + type + ".html?id=" + id; // HOST global is defined in request.js
 
     // Attach it to the list
     const container = document.getElementById(category);
@@ -12,6 +12,10 @@ function addItem(category, title, id) {
 
 // Retrieves information for this page
 function getPageData() {
+    getPageSections();
+}
+
+function getPageSections() {
     // First, get the sections
     request_get('api/section/list', (json, res) => {
         // If user is not authenticated, take them to login page
@@ -44,14 +48,62 @@ function getPageData() {
         
         // Build the elements for each section
         sections_owned.forEach((section, index) => {
-            title = section["title"];
-            id = section["_id"];
-            addItem("sections_owned", title, id);
+            var title = section["title"];
+            var id = section["_id"];
+            addItem("sections_owned", title, id, "section");
         })
         sections_invited.forEach((section, index) => {
-            title = section["title"];
-            id = section["_id"];
-            addItem("sections_invited", title, id);
+            var title = section["title"];
+            var id = section["_id"];
+            addItem("sections_invited", title, id, "section");
+        })
+
+        // Now do songs
+        getPageSongs();
+    });
+}
+
+function getPageSongs() {
+    // Second, get the songs
+    request_get('api/song/list', (json, res) => {
+        // If user is not authenticated, take them to login page
+        if (res.status === 401) {
+            window.location.href = "login.html";
+            return;
+        }
+        // If some other error, take user to error page
+        if (res.status >= 500) {
+            //window.location.href = "error_500.html";
+            return;
+        }
+
+        // Get the song list
+        var songs_owned = json["songs_owned"];
+        var songs_invited = json["songs_invited"];
+
+        // Delete the "Nothing Here" message
+        if (songs_invited.length > 0) {
+            document.getElementById("songs_invited").innerText = "";
+        }
+        
+        // Sort the songs by most recently edited first
+        songs_owned.sort((a, b) => {
+            return new Date(b["lastEditDateTime"]) - new Date(a["lastEditDateTime"]);
+        });
+        songs_invited.sort((a, b) => {
+            return new Date(b["lastEditDateTime"]) - new Date(a["lastEditDateTime"]);
+        });
+        
+        // Build the elements for each song
+        songs_owned.forEach((song, index) => {
+            var title = song["title"];
+            var id = song["_id"];
+            addItem("songs_owned", title, id, "song");
+        })
+        songs_invited.forEach((song, index) => {
+            var title = song["title"];
+            var id = song["_id"];
+            addItem("songs_invited", title, id, "song");
         })
     });
 }
@@ -66,9 +118,14 @@ function createSectionClick(e) {
     });
 }
 
-// Button for creating a new section
+// Button for creating a new song
 function createSongClick(e) {
-    console.log("Currently disabled");
+    request_post('api/song/create', {}, (json, res) => {
+        if (res.status == 200) {
+            var id = json["song"]["_id"];
+            window.location.href = "song_edit.html?id=" + id;
+        }
+    });
 }
 
 getPageData();

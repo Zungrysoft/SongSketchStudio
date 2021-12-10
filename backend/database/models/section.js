@@ -9,10 +9,10 @@ const sectionSchema = new mongoose.Schema({
     _id: false,
     pitch : Number,
     time: Number,
-    duration: Number
+    duration: Number,
+    instrument: Number,
   }],
   loopPoint: Number,
-  instrument: Number,
   bpm: Number,
   owner: {
     type: mongoose.Schema.Types.ObjectId,

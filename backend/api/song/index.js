@@ -75,6 +75,7 @@ song.post('/create', middleware.authenticateUser, async (req, res) => {
      description: req.body.description || '',
      creationDateTime: currentDateTime,
      lastEditDateTime: currentDateTime,
+     bpm: req.body.bpm || 120,
      owner: req.user.id,
    });
  
@@ -89,7 +90,125 @@ song.post('/create', middleware.authenticateUser, async (req, res) => {
  
    // Response
    return songReturn(req, res, songData);
- });
+});
+
+/**
+ * Edits song metadata by id
+ * @param {Hex} id - The id of the song, must be only hex digits
+**/
+song.post('/edit/:id([a-f0-9]+)', middleware.authenticateUser, async (req, res) => {
+  // Get the song to edit
+  let getObj;
+  try {
+    getObj = await Song.findById(req.params.id).exec();
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error retrieving from database',
+    });
+  }
+
+  // Ensure an actual object was found
+  if (!getObj) {
+    return res.status(404).json({
+      error: 'Object not found',
+    });
+  }
+
+  // Ensure the authenticated user is an editor of this song
+  result = helpers.checkIsEditor(req, res, getObj);
+  if (result) {return result;}
+
+  // Change the section data
+  getObj.title = req.body.title || getObj.title;
+  getObj.description = req.body.description || getObj.description;
+  getObj.bpm = req.body.bpm || getObj.bpm;
+  getObj.lastEditDateTime = Date.now();
+
+  // Save it to the database
+  try {
+    await getObj.save();
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error saving to database',
+    });
+  }
+
+  // Response
+  return songReturn(req, res, getObj);
+});
+
+/**
+ * Adds a user to the list of users that can edit this song
+ * @param {Hex} id - The id of the song, must be only hex digits
+ * @body {String} username - The username of the editor
+**/
+song.post('/addEditor/:id([a-f0-9]+)', middleware.authenticateUser, async (req, res) => {
+  // Get the song to edit
+  let getObj;
+  try {
+    getObj = await Song.findById(req.params.id).exec();
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error retrieving from database',
+    });
+  }
+
+  // Ensure an actual object was found
+  if (!getObj) {
+    return res.status(404).json({
+      error: 'Object not found',
+    });
+  }
+
+  // Ensure the authenticated user is the owner of this song
+  result = helpers.checkIsOwner(req, res, getObj);
+  if (result) {return result;}
+
+  // Find the user with the username
+  req.body.username = req.body.username || "";
+  let userObj;
+  try {
+    userObj = await User.findOne({ username: req.body.username }).exec();
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error retrieving from database',
+    });
+  }
+
+  // Ensure an actual user was found
+  if (!userObj) {
+    return res.status(404).json({
+      error: 'User not found',
+    });
+  }
+
+  // Make sure user is not already an editor or owner
+  if (getObj.owner == userObj.id) {
+    return res.status(400).json({
+      error: 'User is already the owner',
+    });
+  }
+  if (getObj.editors.includes(userObj.id)) {
+    return res.status(400).json({
+      error: 'User is already an editor',
+    });
+  }
+
+  // Add the user's id to the list of allowed users
+  getObj.editors.push(userObj.id);
+
+  // Save it to the database
+  try {
+    await getObj.save();
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error saving to database',
+    });
+  }
+
+  // Response
+  return songReturn(req, res, getObj);
+});
 
 /**
  * Makes a section available to be used in a song
@@ -163,6 +282,46 @@ song.post('/registerSection/:id([a-f0-9]+)', middleware.authenticateUser, async 
    });
 });
 
+/**
+ * Deletes a song
+ * @param {Hex} id - The id of the song, must be only hex digits
+**/
+song.post('/delete/:id([a-f0-9]+)', middleware.authenticateUser, async (req, res) => {
+  // Get the song to delete
+  let getObj;
+  try {
+    getObj = await Song.findById(req.params.id).exec();
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error retrieving from database',
+    });
+  }
+
+  // Ensure an actual object was found
+  if (!getObj) {
+    return res.status(404).json({
+      error: 'Object not found',
+    });
+  }
+
+  // Ensure the authenticated user is owner of this song
+  result = helpers.checkIsOwner(req, res, getObj);
+  if (result) {return result;}
+
+  // Delete it
+  try {
+    await Song.deleteOne({ _id: getObj._id });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error deleting object',
+    });
+  }
+
+  // Response
+  return res.status(200).json({
+    result: "Success",
+  });
+});
 
 /**
  * Returns song data by id

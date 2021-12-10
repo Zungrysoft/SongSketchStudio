@@ -47,14 +47,12 @@ async function sectionReturn(req, res, obj) {
  * @param {Hex} id - The id of the section, must be only hexadecimal
  * @body {String} title - The title of the section
  * @body {String} description - User notes about the section
- * @body {String} instrument - The id of this section's instrument (see models/section.js)
 **/
 section.post('/create', middleware.authenticateUser, async (req, res) => {
   // Create the section
   const sectionData = new Section({
     title: req.body.title || 'Unnamed section',
     description: req.body.description || '',
-    instrument: req.body.instrument || 0,
     creationDateTime: Date.now(),
     lastEditDateTime: Date.now(),
     notes: '',
@@ -105,7 +103,6 @@ section.post('/edit/:id([a-f0-9]+)', middleware.authenticateUser, async (req, re
   // Change the section data
   getObj.title = req.body.title || getObj.title;
   getObj.description = req.body.description || getObj.description;
-  getObj.instrument = req.body.instrument || getObj.instrument;
   getObj.loopPoint = req.body.loopPoint || getObj.loopPoint;
   getObj.bpm = req.body.bpm || getObj.bpm;
   getObj.lastEditDateTime = Date.now();
@@ -124,7 +121,7 @@ section.post('/edit/:id([a-f0-9]+)', middleware.authenticateUser, async (req, re
 });
 
 /**
- * Adds a user to the list of users that can edit a section
+ * Adds a user to the list of users that can edit this section
  * @param {Hex} id - The id of the section, must be only hex digits
  * @body {String} username - The username of the editor
 **/
@@ -303,7 +300,7 @@ section.post('/removeNote/:id([a-f0-9]+)', middleware.authenticateUser, async (r
  * Deletes a section
  * @param {Hex} id - The id of the section, must be only hex digits
 **/
-section.post('/delete/:id([a-f0-9]+)', middleware.authenticateUser, async (req, res) => {
+/*section.post('/delete/:id([a-f0-9]+)', middleware.authenticateUser, async (req, res) => {
   // Get the section to delete
   let getObj;
   try {
@@ -338,7 +335,7 @@ section.post('/delete/:id([a-f0-9]+)', middleware.authenticateUser, async (req, 
   return res.status(200).json({
     result: "Success",
   });
-});
+});*/
 
  
 /**

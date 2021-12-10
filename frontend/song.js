@@ -5,7 +5,7 @@
 // Globals
 var startbarPosition = 0;
 var nextId = 0;
-var editingEnabled = true;
+var editingEnabled = false;
 var currentIndex = -1;
 
 // Section list
@@ -176,8 +176,6 @@ function updateTabTitle(str) {
     document.getElementById("tab_title").innerText = str + " - SongSketchStudio";
 }
 
-
-
 function getPageData() {
     // Reset data
     sectionsAvailable = {};
@@ -219,7 +217,6 @@ function getPageData() {
             // Package id and title as a dict
             sectionsAvailable[id] = item;
         });
-        reloadSections();
 
         // Enable playback
         enablePlayback();
@@ -235,6 +232,9 @@ function getPageData() {
 
         // Update editing mode
         editingEnabled = json["isEditor"];
+
+        // Reload
+        reloadSections();
     });
 }
 
