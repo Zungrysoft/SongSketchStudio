@@ -8,6 +8,7 @@
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2">
     <link rel="stylesheet" href="styles.css">
 </head>
+<script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script src="request.js" defer></script>
 <script src="audio.js" defer></script>
 <script src="playback.js" defer></script>
@@ -18,7 +19,7 @@
     <img id="timeline" class="timeline" src="/images/timeline3.png" onclick="timelineClick(event)" draggable="false" alt=""/>
     <div id="section_list" class="section_list"></div>
     <div id="tile_list" class="tile_list"></div>
-    <img id="piano_roll" class="piano_roll" src="/images/arranger.png" onClick=pianoRollClick(event) draggable="false" alt=""/>
+    <img id="piano_roll" class="piano_roll" src="/images/arranger.png" draggable="false" alt=""/>
     <div id="channels"></div>
     <audio src="/sounds/note_test.wav"></audio>
 </body>

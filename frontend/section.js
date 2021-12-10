@@ -21,6 +21,15 @@ if (!sectionId) {
     window.location.href = "error_404.html";
 }
 
+// Pusher
+var pusher = new Pusher('89d75d5bd73462337ba8', {
+    cluster: 'us3'
+});
+var channel = pusher.subscribe('section_' + sectionId);
+channel.bind('update', function(data) {
+    updateFromPageData(data);
+});
+
 // =======
 // Helpers
 // =======
@@ -33,7 +42,7 @@ function movePlaybar(xPos) {
     document.getElementById("playbar").setAttribute('style', cssVal);
 }
 
-function moveLoopbar(xPos) {
+function moveLoopbar(xPos, sendRequest) {
     loopbarPosition = xPos + 1;
     reloadNotes();
 
@@ -48,7 +57,9 @@ function moveLoopbar(xPos) {
     };
 
     // Make the request
-    request_post('api/section/edit/' + sectionId, body);
+    if (sendRequest) {
+        request_post('api/section/edit/' + sectionId, body);
+    }
 }
 
 function reloadNotes() {
@@ -137,47 +148,40 @@ function updateTabTitle(str) {
     document.getElementById("tab_title").innerText = str + " - SongSketchStudio";
 }
 
+function updateFromPageData(json) {
+    var readList = json["section"]["noteList"];
+    
+    // Give each note an id for the frontend
+    for (let i = 0; i < readList.length; i ++) {
+        readList[i]["id"] = nextId;
+        nextId ++;
+    }
+    noteList = readList;
+
+    // Move loop point
+    moveLoopbar(json["section"]["loopPoint"], false);
+
+    // Update tab title
+    updateTabTitle(json["section"]["title"]);
+
+    // Set bpm
+    setBpm(json["section"]["bpm"] || 120);
+
+    // Reload
+    reloadNotes();
+}
+
 function getPageData() {
     // TODO make this link dynamic
-    request_get('api/section/get/' + sectionId, json => {
-        // Make sure the user wasn't denied access
-        if (json["error"]) {
-            console.log("CANT LOAD");
-            //window.location.href = "error_access.html";
-        }
-
-        var readList = json["section"]["noteList"];
-        
-        // Give each note an id for the frontend
-        for (let i = 0; i < readList.length; i ++) {
-            readList[i]["id"] = nextId;
-            nextId ++;
-        }
-        noteList = readList;
+    request_get('api/section/get/' + sectionId, (json) => {
+        // Update editing mode
+        editingEnabled = json["isEditor"];
 
         // Enable playback
         enablePlayback();
 
-        // Move loop point
-        moveLoopbar(json["section"]["loopPoint"]);
-
-        // Update tab title
-        updateTabTitle(json["section"]["title"]);
-
-        // Set bpm
-        setBpm(json["section"]["bpm"] || 120);
-
-        // Enabled looping
-        setLoopMode(true);
-
-        // Set playbar animation as the animation callback in playback.js
-        setPlaybackAnimation(movePlaybar);
-
-        // Update editing mode
-        editingEnabled = json["isEditor"];
-
-        // Reload
-        reloadNotes();
+        // Interpret backend data
+        updateFromPageData(json);
     });
 }
 
@@ -196,7 +200,7 @@ function timelineClick(e) {
         var xCell = Math.trunc(x/noteWidth);
 
         // Move the loopbar
-        moveLoopbar(xCell);
+        moveLoopbar(xCell, true);
     }
 }
 
@@ -243,11 +247,17 @@ window.onkeydown = function(e){
 // Other
 // =====
 
+// Enabled looping
+setLoopMode(true);
+
+// Set playbar animation as the animation callback in playback.js
+setPlaybackAnimation(movePlaybar);
+
 // Load in notes from server
 getPageData();
 
 // Gives the playbars their starting CSS at position 0
-moveLoopbar(0);
+moveLoopbar(0, false);
 movePlaybar(0);
 
 // Removes the JavaScript Warning since JavaScript is working

@@ -7,6 +7,17 @@ const editNotes = require('./notes');
 
 const section = express.Router();
 
+// Pusher stuff
+const Pusher = require("pusher");
+
+const pusher = new Pusher({
+  appId: "1314793",
+  key: "89d75d5bd73462337ba8",
+  secret: "5997e01be62a75b01e31",
+  cluster: "us3",
+  useTLS: true
+});
+
 // ================
 // Helper Functions
 // ================
@@ -27,7 +38,7 @@ async function sectionReturn(req, res, obj) {
   }
 
   // Return
-  return res.status(200).json({
+  return {
     isOwner: userIsOwner,
     isEditor: userIsEditor,
     section: obj,
@@ -35,7 +46,7 @@ async function sectionReturn(req, res, obj) {
       username: ownerObj.username,
       _id: ownerObj._id,
     },
-  });
+  };
 }
 
 // ======
@@ -71,7 +82,7 @@ section.post('/create', middleware.authenticateUser, async (req, res) => {
   }
 
   // Response
-  return sectionReturn(req, res, sectionData);
+  return res.status(200).json(await sectionReturn(req, res, sectionData));
 });
 
 /**
@@ -116,8 +127,11 @@ section.post('/edit/:id([a-f0-9]+)', middleware.authenticateUser, async (req, re
     });
   }
 
+  // Pusher
+  pusher.trigger("section_" + req.params.id, "update", await sectionReturn(req, res, getObj));
+
   // Response
-  return sectionReturn(req, res, getObj);
+  return res.status(200).json(await sectionReturn(req, res, getObj));
 });
 
 /**
@@ -190,7 +204,7 @@ section.post('/addEditor/:id([a-f0-9]+)', middleware.authenticateUser, async (re
   }
 
   // Response
-  return sectionReturn(req, res, getObj);
+  return res.status(200).json(await sectionReturn(req, res, getObj));
 });
 
 /**
@@ -237,6 +251,9 @@ section.post('/addNote/:id([a-f0-9]+)', middleware.authenticateUser, async (req,
       error: 'Error saving to database',
     });
   }
+
+  // Pusher
+  pusher.trigger("section_" + req.params.id, "update", await sectionReturn(req, res, getObj));
 
   // Response
   return res.status(200).json({
@@ -288,6 +305,9 @@ section.post('/removeNote/:id([a-f0-9]+)', middleware.authenticateUser, async (r
       error: 'Error saving to database',
     });
   }
+
+  // Pusher
+  pusher.trigger("section_" + req.params.id, "update", await sectionReturn(req, res, getObj));
 
   // Response
   return res.status(200).json({
@@ -361,7 +381,7 @@ section.get('/get/:id([a-f0-9]+)', async (req, res) => {
   }
 
   // Response
-  return sectionReturn(req, res, getObj);
+  return res.status(200).json(await sectionReturn(req, res, getObj));
 });
 
 /**

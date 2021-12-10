@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<head>
+  <title>Pusher Test</title>
+  <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+  <script>
+
+    var pusher = new Pusher('89d75d5bd73462337ba8', {
+      cluster: 'us3'
+    });
+
+    var channel = pusher.subscribe('section_');
+    channel.bind('update', function(data) {
+      console.log(JSON.stringify(data));
+    });
+  </script>
+</head>
+<body>
+  <h1>Pusher Test</h1>
+  <p>
+    Try publishing an event to channel <code>my-channel</code>
+    with event name <code>my-event</code>.
+  </p>
+</body>

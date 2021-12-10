@@ -37,6 +37,15 @@ if (!songId) {
     window.location.href = "error_404.html";
 }
 
+// Pusher
+var pusher = new Pusher('89d75d5bd73462337ba8', {
+    cluster: 'us3'
+});
+var channel = pusher.subscribe('song_' + songId);
+channel.bind('update', function(data) {
+    updateFromPageData(data);
+});
+
 // =======
 // Helpers
 // =======
@@ -138,7 +147,6 @@ function rebuildTiles() {
 
     // Build the tiles
     for (let i = 0; i < MAX_SECTIONS; i ++) {
-        console.log(sectionPlacements[i])
         if (sectionPlacements[i].length > 0) {
             // Build style
             const xCSS = (sectionWidth * i) + "px";
@@ -176,7 +184,7 @@ function updateTabTitle(str) {
     document.getElementById("tab_title").innerText = str + " - SongSketchStudio";
 }
 
-function getPageData() {
+function updateFromPageData(json) {
     // Reset data
     sectionsAvailable = {};
     sectionPlacements = [];
@@ -184,57 +192,53 @@ function getPageData() {
         sectionPlacements.push("");
     }
 
-    // First, get song data
-    request_get('api/song/get/' + songId, json => {
-        // Make sure the user wasn't denied access
-        if (json["error"]) {
-            console.log("CANT LOAD");
-            //window.location.href = "error_access.html";
+    // Convert backend sectionPlacements format to frontend format
+    var readList = json["song"]["sectionPlacements"];
+    readList.forEach((item, index) => {
+        // Pull json data out
+        var id = item["section"];
+        var time = item["time"];
+
+        // Confirm time is okay so no index OOB
+        if (time >= MAX_SECTIONS || time < 0) {
+            time = 0;
         }
 
-        // Convert backend sectionPlacements format to frontend format
-        var readList = json["song"]["sectionPlacements"];
-        readList.forEach((item, index) => {
-            // Pull json data out
-            var id = item["_id"];
-            var time = item["time"];
+        // Package id and title as a dict
+        sectionPlacements[time] = id;
+    });
 
-            // Confirm time is okay so no index OOB
-            if (time >= MAX_SECTIONS || time < 0) {
-                time = 0;
-            }
+    // Convert backend sectionsAvailable format to frontend format
+    readList = json["song"]["sectionsAvailable"];
+    readList.forEach((item, index) => {
+        // Pull json data out
+        var id = item["_id"];
 
-            // Package id and title as a dict
-            sectionPlacements[time] = id;
-        });
+        // Package id and title as a dict
+        sectionsAvailable[id] = item;
+    });
 
-        // Convert backend sectionsAvailable format to frontend format
-        readList = json["song"]["sectionsAvailable"];
-        readList.forEach((item, index) => {
-            // Pull json data out
-            var id = item["_id"];
+    // Update tab title
+    updateTabTitle(json["song"]["title"]);
 
-            // Package id and title as a dict
-            sectionsAvailable[id] = item;
-        });
+    // Set bpm
+    setBpm(json["song"]["bpm"] || 120);
+
+    // Reload
+    reloadSections();
+}
+
+function getPageData() {
+    // Get song data
+    request_get('api/song/get/' + songId, (json) => {
+        // Update editing mode
+        editingEnabled = json["isEditor"];
 
         // Enable playback
         enablePlayback();
 
-        // Update tab title
-        updateTabTitle(json["song"]["title"]);
-
-        // Set bpm
-        setBpm(json["song"]["bpm"] || 120);
-
-        // Set index tracker as the animation callback in playback.js
-        setPlaybackTracker(trackIndex);
-
-        // Update editing mode
-        editingEnabled = json["isEditor"];
-
-        // Reload
-        reloadSections();
+        // Interpret backend data
+        updateFromPageData(json);
     });
 }
 
@@ -254,29 +258,34 @@ function timelineClick(e) {
     moveStartbar(xCell);
 }
 
-// Piano Roll
-function pianoRollClick(e) {
-    // Make sure editing is enabled
-    if (editingEnabled) {
-        // Determine the coords the image was clicked at
-        var x = e.clientX + window.pageXOffset;
-        var y = e.clientY + window.pageYOffset - timelineHeight;
-
-        // Use this to determine which cell they clicked
-        var xCell = Math.trunc(x/noteWidth);
-        var yCell = Math.trunc(y/noteHeight);
-
-        // Call the note creation function
-        createNote(xCell, yCell);
-    }
-}
-
 // Section Button
-function sectionClick(id, pos, e) {
-    if (sectionPlacements[pos] == id) {
-        sectionPlacements[pos] = "";
-    } else {
-        sectionPlacements[pos] = id;
+function sectionClick(id, index, e) {
+    if (sectionPlacements[index] == id) {
+        // Clear slot
+        sectionPlacements[index] = "";
+
+        // Build request body
+        const body = {
+            index: index,
+            clear: true,
+        };
+        
+        // Notify the server
+        request_post('api/song/changeSlot/' + songId, body);
+    }
+    else {
+        // Fill slot
+        sectionPlacements[index] = id;
+
+        // Build request body
+        const body = {
+            index: index,
+            sectionId: id,
+            clear: false,
+        };
+        
+        // Notify the server
+        request_post('api/song/changeSlot/' + songId, body);
     }
     reloadSections();
 }
@@ -303,6 +312,9 @@ window.onkeydown = function(e) {
 // =====
 // Other
 // =====
+
+// Set index tracker as the animation callback in playback.js
+setPlaybackTracker(trackIndex);
 
 // Load in notes from server
 getPageData();

@@ -7,6 +7,17 @@ const helpers = require('../helpers');
 
 const song = express.Router();
 
+// Pusher stuff
+const Pusher = require("pusher");
+
+const pusher = new Pusher({
+  appId: "1314793",
+  key: "89d75d5bd73462337ba8",
+  secret: "5997e01be62a75b01e31",
+  cluster: "us3",
+  useTLS: true
+});
+
 // ================
 // Helper Functions
 // ================
@@ -46,7 +57,7 @@ async function songReturn(req, res, obj) {
 
   // Get user data
   const ownerObj = await helpers.getUserDataById(obj.owner);
-  return res.status(200).json({
+  return {
     isOwner: userIsOwner,
     isEditor: userIsEditor,
     song: obj,
@@ -54,7 +65,7 @@ async function songReturn(req, res, obj) {
       username: ownerObj.username,
       _id: ownerObj._id,
     },
-  });
+  };
 }
 
 // ======
@@ -89,7 +100,7 @@ song.post('/create', middleware.authenticateUser, async (req, res) => {
    }
  
    // Response
-   return songReturn(req, res, songData);
+   return res.status(200).json(await songReturn(req, res, songData));
 });
 
 /**
@@ -133,8 +144,11 @@ song.post('/edit/:id([a-f0-9]+)', middleware.authenticateUser, async (req, res) 
     });
   }
 
+  // Pusher
+  pusher.trigger("song_" + req.params.id, "update", await songReturn(req, res, getObj));
+
   // Response
-  return songReturn(req, res, getObj);
+  return res.status(200).json(await songReturn(req, res, getObj));
 });
 
 /**
@@ -207,7 +221,7 @@ song.post('/addEditor/:id([a-f0-9]+)', middleware.authenticateUser, async (req, 
   }
 
   // Response
-  return songReturn(req, res, getObj);
+  return res.status(200).json(await songReturn(req, res, getObj));
 });
 
 /**
@@ -275,11 +289,105 @@ song.post('/registerSection/:id([a-f0-9]+)', middleware.authenticateUser, async 
        error: 'Error saving to database',
      });
    }
+
+   // Pusher
+   pusher.trigger("song_" + req.params.id, "update", await songReturn(req, res, getObj));
  
    // Response
    return res.status(200).json({
      result: "Success",
    });
+});
+
+/**
+ * Changes a slot in the arranger
+ * @param {Hex} id - The id of the song, must be only hex digits
+ * @body {Number} index - The slot index
+ * @body {Hex} sectionId - The id of the section, must be only hex digits
+ * @body {Boolean} clear - True if the slot should be cleared instead
+**/
+song.post('/changeSlot/:id([a-f0-9]+)', middleware.authenticateUser, async (req, res) => {
+  // Get the song to edit
+  let getObj;
+  try {
+    getObj = await Song.findById(req.params.id).exec();
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error retrieving from database',
+    });
+  }
+
+  // Ensure an actual object was found
+  if (!getObj) {
+    return res.status(404).json({
+      error: 'Object not found',
+    });
+  }
+
+  // Ensure the authenticated user is an editor of this song
+  result = helpers.checkIsEditor(req, res, getObj);
+  if (result) {return result;}
+
+  // Ensure an index was specified
+  var index = req.body.index;
+  if (index === undefined) {
+    return res.status(400).json({
+       error: 'No index specified',
+    });
+  }
+
+  
+  // First, clear the slot
+  var sectionPlacements = getObj.sectionPlacements;
+  var i = sectionPlacements.length;
+  while (i--) {
+    if (sectionPlacements[i]["time"] == index) {
+      getObj.sectionPlacements.splice(i, 1);
+    }
+  }
+
+  // If we're not just clearing the slot, put the new section in
+  var clear = req.body.clear || false;
+  if (!clear) {
+    // Ensure a section id was specified
+    var sectionId = req.body.sectionId;
+    if (!sectionId) {
+      return res.status(400).json({
+        error: 'No sectionId specified',
+      });
+    }
+
+    // Make sure the section is available in this song
+    if (!getObj["sectionsAvailable"].includes(sectionId)) {
+      return res.status(400).json({
+        error: 'That section is not available for this song',
+      });
+    }
+
+    // Build and push data
+    const dict = {
+      section: sectionId,
+      time: index,
+    };
+    getObj.sectionPlacements.push(dict);
+  }
+
+  // Save it to the database
+  try {
+    await getObj.save();
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error saving to database',
+    });
+  }
+
+  // Pusher
+  pusher.trigger("song_" + req.params.id, "update", await songReturn(req, res, getObj));
+
+  // Response
+  return res.status(200).json({
+    result: "Success",
+  });
 });
 
 /**
@@ -346,7 +454,7 @@ song.get('/get/:id([a-f0-9]+)', async (req, res) => {
   }
 
   // Response
-  return songReturn(req, res, getObj);
+  return res.status(200).json(await songReturn(req, res, getObj));
 });
 
 
