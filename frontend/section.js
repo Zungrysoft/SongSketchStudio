@@ -172,7 +172,6 @@ function updateFromPageData(json) {
 }
 
 function getPageData() {
-    // TODO make this link dynamic
     request_get('api/section/get/' + sectionId, (json) => {
         // Update editing mode
         editingEnabled = json["isEditor"];

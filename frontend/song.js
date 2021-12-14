@@ -126,6 +126,7 @@ function reloadSections() {
                 ne.setAttribute('type', 'submit');
                 ne.setAttribute('style', cssVal);
                 ne.setAttribute('onClick', functionCall);
+                ne.setAttribute('class', 'section-adder');
                 ne.innerText = item["title"];
                 container.appendChild(ne);
 

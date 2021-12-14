@@ -45,7 +45,7 @@ function getPageData() {
         if (json["isOwner"] === false) {
             owner_only = document.getElementById("owner_only");
             owner_only.parentElement.removeChild(owner_only);
-        }  
+        }
         
         // Edit the HTML data
         var title = json["section"]["title"];
