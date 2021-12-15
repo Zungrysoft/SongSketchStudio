@@ -162,7 +162,8 @@ function timer() {
                 const t = timeToMs(item.time);
                 if (previousNote < t && t <= nextNote) {
                     console.log("PLAYED NOTE: ", item.pitch);
-                    playNote(item.pitch);
+                    console.log("INSTRUMENT: ", item.instrument);
+                    playNote(item.pitch, item.instrument, item.duration);
                 }
             });
 

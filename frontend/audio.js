@@ -18,16 +18,54 @@ for (let i = 0; i < maxSimultaneousNotes; i ++) {
     track.connect(audioContext.destination);
 }
 
-function playNote(pitch) {
+// Returns the file string for the instrument
+function getSoundFile(instrument) {
+    if (instrument == 1) {
+        return "/sounds/bass_g.wav";
+    }
+    if (instrument == 3) {
+        return "/sounds/organ_g.wav";
+    }
+    return "/sounds/guitar_g.wav";
+}
+
+// Returns the file string for drums
+function getDrumSoundFile(pitch) {
+    if (pitch % 5 == 0) {
+        return "/sounds/drum_kick.wav";
+    }
+    if (pitch % 5 == 1) {
+        return "/sounds/drum_snare.wav";
+    }
+    if (pitch % 5 == 2) {
+        return "/sounds/drum_tom_low.wav";
+    }
+    if (pitch % 5 == 3) {
+        return "/sounds/drum_hihat_closed.wav";
+    }
+    return "/sounds/drum_crash.wav";
+}
+
+function playNote(pitch, instrument, duration) {
     // Calculate pitch in equal temperament
     let etPitch = Math.pow(2,pitch/12);
 
     // Set up the audio element
     const container = document.getElementById("channels");
     let ne = container.children[currentChannel];
-    ne.setAttribute('src', "/sounds/note_test.wav");
-    ne.mozPreservesPitch = false;
-    ne.playbackRate = etPitch;
+
+    // Drums
+    if (instrument == 2) {
+        ne.playbackRate = 1;
+        ne.setAttribute('src', getDrumSoundFile(pitch));
+    }
+    // Other instruments
+    else {
+        ne.setAttribute('src', getSoundFile(instrument));
+        ne.playbackRate = etPitch;
+        ne.mozPreservesPitch = false;
+    }
+    
 
     // Play the note
     ne.play();

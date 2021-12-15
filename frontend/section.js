@@ -7,10 +7,16 @@ var loopbarPosition = 0;
 var nextId = 0;
 var noteList = [];
 var editingEnabled = false;
+var selectedInstrument = 0;
 
 // Constants
 const noteWidth = 40;
 const noteHeight = 30;
+const timelineHeight = 60;
+const PIANOROLLHEIGHT = 24;
+const INSTRUMENTSPACING = 60;
+const INSTRUMENTSIZE = 60;
+const ICONOFFSET = 1164;
 
 // Query Params
 const urlParams = new URLSearchParams(window.location.search);
@@ -30,6 +36,55 @@ channel.bind('update', function(data) {
     updateFromPageData(data);
 });
 
+// Build instrument icons HTML
+instrumentData = [
+    {icon:"images/instrument_guitar.png", noteImage: "images/note_green_light.png"},
+    {icon:"images/instrument_bass.png", noteImage: "images/note_yellow_light.png"},
+    {icon:"images/instrument_drums.png", noteImage: "images/note_red_light.png"},
+    {icon:"images/instrument_organ.png", noteImage: "images/note_blue_light.png"},
+];
+instrumentContainer = document.getElementById("instruments");
+instrumentData.forEach((item, index) => {
+    // Build style
+    let xCSS = (index*INSTRUMENTSPACING) + "px";
+    let yCSS = 0 + "px";
+    let cssVal = "position: absolute; left: " + xCSS + "; top: " + yCSS;
+
+    // Build function call
+    let functionCall = "instrumentClick(" + index + ", event)";
+
+    // Create element
+    let ne = document.createElement("img");
+    ne.setAttribute('src', item.icon);
+    ne.setAttribute('style', cssVal);
+    ne.setAttribute('onClick', functionCall);
+    ne.setAttribute('draggable', 'false');
+    ne.setAttribute('alt', '');
+    container.appendChild(ne);
+});
+iconData = [
+    {icon: "images/icon_edit.png", href:"section_edit.html?id=" + sectionId},
+    {icon: "images/icon_home.png", href:"home.html"},
+];
+iconData.forEach((item, index) => {
+    // Build style
+    let xCSS = (ICONOFFSET + (index*INSTRUMENTSPACING)) + "px";
+    let yCSS = 0 + "px";
+    let cssVal = "position: absolute; left: " + xCSS + "; top: " + yCSS;
+
+    // Build function call
+    let functionCall = "iconClick(\"" + item.href + "\", event)";
+
+    // Create element
+    let ne = document.createElement("img");
+    ne.setAttribute('src', item.icon);
+    ne.setAttribute('style', cssVal);
+    ne.setAttribute('onClick', functionCall);
+    ne.setAttribute('draggable', 'false');
+    ne.setAttribute('alt', '');
+    container.appendChild(ne);
+});
+
 // =======
 // Helpers
 // =======
@@ -38,7 +93,8 @@ channel.bind('update', function(data) {
 function movePlaybar(xPos) {
     // Edit HTML
     let xCSS = (xPos*noteWidth) + "px";
-    var cssVal = "position: absolute; pointer-events: none; top: 0px; left: " + xCSS;
+    let yCSS = timelineHeight + "px";
+    var cssVal = "position: absolute; pointer-events: none; top: " + yCSS + "; left: " + xCSS;
     document.getElementById("playbar").setAttribute('style', cssVal);
 }
 
@@ -48,7 +104,8 @@ function moveLoopbar(xPos, sendRequest) {
 
     // Edit HTML
     let xCSS = (xPos*noteWidth) + "px";
-    var cssVal = "position: absolute; pointer-events: none; top: 0px; left: " + xCSS;
+    let yCSS = timelineHeight + "px";
+    var cssVal = "position: absolute; pointer-events: none; top: " + yCSS + "; left: " + xCSS;
     document.getElementById("loopbar").setAttribute('style', cssVal);
 
     // Build request body
@@ -80,7 +137,7 @@ function reloadNotes() {
     noteList.forEach((item, index) => {
         // Build style
         let xCSS = (item.time*noteWidth) + "px";
-        let yCSS = ((item.pitch*noteHeight) + (noteHeight * 2)) + "px";
+        let yCSS = (((PIANOROLLHEIGHT - 1) * noteHeight) - (item.pitch*noteHeight) + timelineHeight*2) + "px";
         let cssVal = "position: absolute; left: " + xCSS + "; top: " + yCSS;
 
         // Build function call
@@ -88,7 +145,7 @@ function reloadNotes() {
 
         // Create element
         let ne = document.createElement("img");
-        ne.setAttribute('src', "/images/note_green_light.png");
+        ne.setAttribute('src', instrumentData[item.instrument || 0]["noteImage"]);
         ne.setAttribute('style', cssVal);
         ne.setAttribute('onClick', functionCall);
         ne.setAttribute('draggable', 'false');
@@ -99,7 +156,7 @@ function reloadNotes() {
 
 function createNote(x, y) {
     // Build the note object
-    const toAdd = {id: nextId, pitch: y, time: x};
+    const toAdd = {id: nextId, pitch: y, time: x, instrument: selectedInstrument};
     nextId ++;
 
     // Append it to the list
@@ -109,12 +166,14 @@ function createNote(x, y) {
     reloadNotes();
 
     // Play the note
-    playNote(y);
+    playNote(y, selectedInstrument, 1.0);
 
     // Build request body
     const body = {
         time: x,
-        pitch: y
+        pitch: y,
+        instrument: selectedInstrument,
+        duration: 1,
     };
     
     // Notify the server
@@ -209,11 +268,11 @@ function pianoRollClick(e) {
     if (editingEnabled) {
         // Determine the coords the image was clicked at
         var x = e.clientX + window.pageXOffset;
-        var y = e.clientY + window.pageYOffset - (noteHeight * 2);
+        var y = e.clientY + window.pageYOffset - timelineHeight*2;
 
         // Use this to determine which cell they clicked
         var xCell = Math.trunc(x/noteWidth);
-        var yCell = Math.trunc(y/noteHeight);
+        var yCell = Math.trunc(PIANOROLLHEIGHT- (y/noteHeight));
 
         // Call the note creation function
         createNote(xCell, yCell);
@@ -226,6 +285,22 @@ function noteClick(id, e) {
     if (editingEnabled) {
         deleteNote(id);
     }
+}
+
+// Instrument
+function instrumentClick(id, e) {
+    // Change instruments
+    selectedInstrument = id;
+
+    // Demo its sound
+    const possiblePitches = [0, 3, 5, 6, 7, 10, 12];
+    var selectedPitch = Date.now() % possiblePitches.length;
+    playNote(possiblePitches[selectedPitch], selectedInstrument, 4);
+}
+
+// Icon
+function iconClick(href, e) {
+    window.location.href = href;
 }
 
 // ==============

@@ -1,8 +1,8 @@
 module.exports = {
-    addNote: function(notes, pitch, time, duration) {
+    addNote: function(notes, pitch, time, instrument, duration) {
         // Handle optional params
         duration = duration || 1;
-        instrument = 0;
+        instrument = instrument || 0;
 
         // Ensure this note isn't already in
         for (let i = 0; i < notes.length; i ++) {

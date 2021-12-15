@@ -211,7 +211,9 @@ section.post('/addEditor/:id([a-f0-9]+)', middleware.authenticateUser, async (re
  * Adds a note to a section
  * @param {Hex} id - The id of the section, must be only hex digits
  * @body {Int} pitch - The MIDI pitch of the note
- * @body {Float} time - The time the note will play (measured in bars)
+ * @body {Float} time - What time the note will play (measured in bars)
+ * @body {Float} duration - How long the note will play
+ * @body {Float} instrument - Note's instrument
 **/
 section.post('/addNote/:id([a-f0-9]+)', middleware.authenticateUser, async (req, res) => {
   // Get the section to edit
@@ -238,10 +240,12 @@ section.post('/addNote/:id([a-f0-9]+)', middleware.authenticateUser, async (req,
   // Ensure note info was specified
   pitch = req.body.pitch || 0;
   time = req.body.time || 0;
+  duration = req.body.duration || 1;
+  instrument = req.body.instrument || 0;
 
   // Change the section data and get the id of the new note
   getObj.lastEditDateTime = Date.now();
-  const retId = editNotes.addNote(getObj.noteList, pitch, time);
+  const retId = editNotes.addNote(getObj.noteList, pitch, time, instrument, duration);
 
   // Save it to the database
   try {

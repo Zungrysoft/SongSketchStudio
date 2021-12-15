@@ -29,6 +29,7 @@ const sectionSchema = new mongoose.Schema({
 * 0: Electric Guitar
 * 1: Electric Bass
 * 2: Drums
+* 3: Hammond Organ
 */
 
 const Section = mongoose.model('Section', sectionSchema);
